@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Home, Activity, Building, LogOut, Lock, MapPin, Bed, Bath } from 'lucide-react';
-import { predictPropertyPrice, loginUser, registerUser } from './services/api';
+import { useState, useEffect } from 'react';
+import { Home, Activity, Building, LogOut, Lock, Clock } from 'lucide-react';
+import { predictPropertyPrice, loginUser, registerUser, getPredictionHistory } from './services/api';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -11,8 +11,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
-  // Ethiopian property fields
   const [formData, setFormData] = useState({
     size_sqm: 150,
     property_type: 'apartment',
@@ -21,6 +21,15 @@ function App() {
     num_bathrooms: 2,
     year: 2024
   });
+
+  // Fetch history when logged in
+  useEffect(() => {
+    if (token) {
+      getPredictionHistory(token)
+        .then(res => { if (res.status === 'success') setHistory(res.data); })
+        .catch(() => handleLogout());
+    }
+  }, [token]);
 
   const handleAuthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthData({ ...authData, [e.target.name]: e.target.value });
@@ -49,6 +58,7 @@ function App() {
     setToken(null);
     localStorage.removeItem('token');
     setResult(null);
+    setHistory([]);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -61,7 +71,13 @@ function App() {
     setLoading(true); setError(null); setResult(null);
     try {
       const response = await predictPropertyPrice(formData, token!);
-      if (response.status === 'success') setResult(response.data.predictedPrice);
+      if (response.status === 'success') {
+        setResult(response.data.predictedPrice);
+        // Refresh history
+        getPredictionHistory(token!).then(res => {
+          if (res.status === 'success') setHistory(res.data);
+        });
+      }
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         handleLogout();
@@ -127,7 +143,8 @@ function App() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Main Prediction Card */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="p-8 border-b md:border-b-0 md:border-r border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
@@ -204,6 +221,47 @@ function App() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* History Table */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="p-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-blue-500"/> Prediction History
+            </h2>
+            {history.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No predictions yet. Generate one above!</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size (sqm)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subcity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Price</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {history.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.sizeSqm}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{item.propertyType}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{item.subcity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                          {item.predictedPriceEtb.toLocaleString()} ETB
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>

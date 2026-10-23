@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { createPrediction } from '../controllers/predictionController';
+import { createPrediction, getHistory } from '../controllers/predictionController';
 import { verifyToken } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Notice verifyToken is added BEFORE createPrediction!
 router.post('/', verifyToken, createPrediction);
+router.get('/history', verifyToken, getHistory);
 
 export default router;

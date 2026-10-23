@@ -8,15 +8,11 @@ export const createPrediction = async (req: AuthRequest, res: Response) => {
     const propertyData = req.body;
     const userId = req.user?.userId;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized. Please log in." });
-    }
+    if (!userId) return res.status(401).json({ message: "Unauthorized." });
 
-    // 1. Call FastAPI ML Service
-    const mlResponse = await axios.post(`${process.env.ML_SERVICE_URL}/predict`, propertyData);
+    const mlResponse = await axios.post(`${process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000'}/predict`, propertyData);
     const predictedPriceEtb = mlResponse.data.predicted_price_etb;
 
-    // 2. Save to PostgreSQL using the new Ethiopian schema
     const savedPrediction = await prisma.prediction.create({
       data: {
         userId: userId,
@@ -44,9 +40,25 @@ export const createPrediction = async (req: AuthRequest, res: Response) => {
         currency: mlResponse.data.currency
       }
     });
-
   } catch (error: any) {
     console.error("Prediction error:", error.message);
-    res.status(500).json({ status: 'error', message: 'Failed to process prediction. Ensure ML service is running.' });
+    res.status(500).json({ status: 'error', message: 'Failed to process prediction.' });
+  }
+};
+
+// NEW: Fetch history for the logged-in user
+export const getHistory = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized." });
+
+    const history = await prisma.prediction.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.status(200).json({ status: 'success', data: history });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Failed to fetch history.' });
   }
 };
