@@ -1,0 +1,39 @@
+{
+  "trained_at_utc": "2026-10-23T16:25:35.659095+00:00",
+  "dataset": "addis_ababa_real_estate.csv (Zenodo 11205969)",
+  "training_rows": 55354,
+  "features_numeric": [
+    "size_sqm",
+    "num_bedrooms",
+    "num_bathrooms",
+    "floor",
+    "year",
+    "lat",
+    "lng",
+    "dist_meskel_square",
+    "dist_arat_kilo",
+    "dist_piassa"
+  ],
+  "features_categorical": [
+    "property_type",
+    "subcity"
+  ],
+  "target": "price",
+  "target_transform": "log1p",
+  "currency": "ETB",
+  "test_split": 0.2,
+  "random_state": 42,
+  "candidates": {
+    "RandomForest": {
+      "mae_etb": 3010437.050518813,
+      "rmse_etb": 5643634.355034664,
+      "r2": 0.8124428617267258
+    },
+    "GradientBoosting": {
+      "mae_etb": 3706817.733974656,
+      "rmse_etb": 6329092.039794016,
+      "r2": 0.7411902631809824
+    }
+  },
+  "selected": "RandomForest"
+}

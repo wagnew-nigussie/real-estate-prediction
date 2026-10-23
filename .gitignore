@@ -16,3 +16,6 @@ __pycache__/
 # Ignore large ML datasets and compiled models
 data/raw/
 ml-service/models/*.joblib
+
+# Leftover US dataset not used by the Ethiopian model
+data/housing.csv
