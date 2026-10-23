@@ -7,37 +7,82 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
-  id        String       @id @default(uuid())
-  email     String       @unique
+  id        String   @id @default(uuid())
+  email     String   @unique
   password  String
   name      String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  
-  // A user can have many predictions
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   predictions Prediction[]
+  auditLogs   AuditLog[]
 }
 
 model Prediction {
-  id                 String   @id @default(uuid())
-  userId             String
-  
-  // Input Features
-  longitude          Float
-  latitude           Float
-  housingMedianAge   Float
-  totalRooms         Float
-  totalBedrooms      Float
-  population         Float
-  households         Float
-  medianIncome       Float
-  
-  // Output Result
-  predictedPrice     Float
-  
-  createdAt          DateTime @default(now())
-  
-  // Relation back to the user
-  user               User     @relation(fields: [userId], references: [id])
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Ethiopian input features (match ML service)
+  sizeSqm       Float
+  propertyType  String
+  subcity       String
+  numBedrooms   Int?
+  numBathrooms  Int?
+  floor         Int?
+  year          Int
+  latitude      Float?
+  longitude     Float?
+  distMeskel    Float?
+  distAratKilo  Float?
+  distPiassa    Float?
+
+  // Output
+  predictedPriceEtb Float
+  currency          String  @default("ETB")
+
+  modelVersionId String?
+  modelVersion   ModelVersion? @relation(fields: [modelVersionId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ModelVersion {
+  id           String   @id @default(uuid())
+  version      String   @unique
+  algorithm    String
+  trainingRows Int
+  maeEtb       Float
+  rmseEtb      Float
+  r2           Float
+  trainedAt    DateTime
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  predictions Prediction[]
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }

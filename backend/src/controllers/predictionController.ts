@@ -6,27 +6,33 @@ import prisma from '../services/prismaClient';
 export const createPrediction = async (req: AuthRequest, res: Response) => {
   try {
     const propertyData = req.body;
-    const userId = req.user?.userId; // Getting the ID from the verified JWT
+    const userId = req.user?.userId;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized. Please log in." });
     }
 
+    // 1. Call FastAPI ML Service
     const mlResponse = await axios.post(`${process.env.ML_SERVICE_URL}/predict`, propertyData);
-    const predictedPrice = mlResponse.data.predicted_price;
+    const predictedPriceEtb = mlResponse.data.predicted_price_etb;
 
+    // 2. Save to PostgreSQL using the new Ethiopian schema
     const savedPrediction = await prisma.prediction.create({
       data: {
         userId: userId,
-        longitude: propertyData.longitude,
-        latitude: propertyData.latitude,
-        housingMedianAge: propertyData.housing_median_age,
-        totalRooms: propertyData.total_rooms,
-        totalBedrooms: propertyData.total_bedrooms,
-        population: propertyData.population,
-        households: propertyData.households,
-        medianIncome: propertyData.median_income,
-        predictedPrice: predictedPrice,
+        sizeSqm: propertyData.size_sqm,
+        propertyType: propertyData.property_type,
+        subcity: propertyData.subcity,
+        numBedrooms: propertyData.num_bedrooms ?? null,
+        numBathrooms: propertyData.num_bathrooms ?? null,
+        floor: propertyData.floor ?? null,
+        year: propertyData.year ?? 2024,
+        latitude: propertyData.lat ?? null,
+        longitude: propertyData.lng ?? null,
+        distMeskel: propertyData.dist_meskel_square ?? null,
+        distAratKilo: propertyData.dist_arat_kilo ?? null,
+        distPiassa: propertyData.dist_piassa ?? null,
+        predictedPriceEtb: predictedPriceEtb,
       }
     });
 
@@ -34,12 +40,13 @@ export const createPrediction = async (req: AuthRequest, res: Response) => {
       status: 'success',
       data: {
         predictionId: savedPrediction.id,
-        predictedPrice: predictedPrice,
+        predictedPrice: predictedPriceEtb,
         currency: mlResponse.data.currency
       }
     });
 
   } catch (error: any) {
-    res.status(500).json({ status: 'error', message: 'Failed to process prediction.' });
+    console.error("Prediction error:", error.message);
+    res.status(500).json({ status: 'error', message: 'Failed to process prediction. Ensure ML service is running.' });
   }
 };
