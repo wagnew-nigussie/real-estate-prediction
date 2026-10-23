@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Home, Activity, Building, LogOut, Lock, Clock } from 'lucide-react';
+import { Home, Activity, Building, LogOut, Lock, Clock, BarChart2 } from 'lucide-react';
 import { predictPropertyPrice, loginUser, registerUser, getPredictionHistory } from './services/api';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -22,7 +23,6 @@ function App() {
     year: 2024
   });
 
-  // Fetch history when logged in
   useEffect(() => {
     if (token) {
       getPredictionHistory(token)
@@ -50,7 +50,7 @@ function App() {
         localStorage.setItem('token', response.token);
       }
     } catch (err: any) {
-      setAuthError(err.response?.data?.message || 'Authentication failed. Make sure backend is running.');
+      setAuthError(err.response?.data?.message || 'Authentication failed.');
     }
   };
 
@@ -73,7 +73,6 @@ function App() {
       const response = await predictPropertyPrice(formData, token!);
       if (response.status === 'success') {
         setResult(response.data.predictedPrice);
-        // Refresh history
         getPredictionHistory(token!).then(res => {
           if (res.status === 'success') setHistory(res.data);
         });
@@ -82,7 +81,7 @@ function App() {
       if (err.response?.status === 401 || err.response?.status === 403) {
         handleLogout();
       } else {
-        setError(err.response?.data?.message || "Failed to connect to the backend API.");
+        setError(err.response?.data?.message || "Failed to connect to the API.");
       }
     } finally {
       setLoading(false);
@@ -223,6 +222,26 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* Chart Section */}
+        {history.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8 p-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <BarChart2 className="h-5 w-5 mr-2 text-blue-500"/> Price Trends
+            </h2>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[...history].reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="subcity" tickFormatter={(val) => val.substring(0, 5) + '...'} />
+                  <YAxis tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`} />
+                  <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} ETB`, 'Price']} />
+                  <Bar dataKey="predictedPriceEtb" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* History Table */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
