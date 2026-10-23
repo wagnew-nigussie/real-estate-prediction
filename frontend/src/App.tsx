@@ -231,9 +231,12 @@ function App() {
             </h2>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[...history].reverse()}>
+                <BarChart data={[...history].reverse().slice(-10).map(item => ({
+                  ...item,
+                  label: `${item.sizeSqm}m² (${item.subcity.substring(0, 4)})`
+                }))}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="subcity" tickFormatter={(val) => val.substring(0, 5) + '...'} />
+                  <XAxis dataKey="label" interval={0} angle={-45} textAnchor="end" height={70} />
                   <YAxis tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`} />
                   <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} ETB`, 'Price']} />
                   <Bar dataKey="predictedPriceEtb" fill="#2563eb" radius={[4, 4, 0, 0]} />
